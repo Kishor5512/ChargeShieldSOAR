@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChargeShield-SOAR Monitor</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --accent: #0284c7;
+      --accent-hover: #0369a1;
+      --danger: #dc2626;
+      --danger-bg: #fef2f2;
+      --success: #16a34a;
+      --success-bg: #f0fdf4;
+      --warning-bg: #fffbeb;
+      --warning: #d97706;
+      --border: #e2e8f0;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      margin: 0;
+      padding: 24px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 16px;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 1.6rem;
+      color: var(--text-main);
+    }
+
+    .status-badge {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-online { 
+      background: var(--success-bg); 
+      color: var(--success); 
+      border: 1px solid #bbf7d0;
+    }
+
+    .status-offline { 
+      background: var(--danger-bg); 
+      color: var(--danger); 
+      border: 1px solid #fecaca;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 22px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
+    }
+
+    .card.attack-active {
+      border: 2px solid var(--danger);
+      background: var(--danger-bg);
+    }
+
+    h2 {
+      margin-top: 0;
+      margin-bottom: 16px;
+      font-size: 1.1rem;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+
+    .attack-header {
+      color: var(--danger) !important;
+      border-bottom-color: #fca5a5 !important;
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.95rem;
+    }
+
+    .metric-row span:first-child {
+      color: var(--text-muted);
+    }
+
+    .metric-value {
+      font-weight: 700;
+      font-family: 'Consolas', 'Courier New', monospace;
+      color: var(--text-main);
+    }
+
+    .metric-value.alert {
+      color: var(--danger);
+      font-weight: 800;
+    }
+
+    .attack-banner {
+      padding: 14px;
+      border-radius: 8px;
+      font-weight: 700;
+      text-align: center;
+      font-size: 1.1rem;
+      letter-spacing: 0.5px;
+    }
+
+    .banner-normal {
+      background: var(--success-bg);
+      color: var(--success);
+      border: 1px solid #bbf7d0;
+    }
+
+    .banner-attack {
+      background: var(--danger);
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(220, 38, 38, 0.4);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.7; }
+      100% { opacity: 1; }
+    }
+
+    .blocklist {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .block-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--danger-bg);
+      border: 1px solid #fca5a5;
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      font-weight: 600;
+      color: var(--danger);
+    }
+
+    button {
+      background: var(--accent);
+      color: #ffffff;
+      border: none;
+      padding: 9px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover { 
+      background: var(--accent-hover); 
+    }
+
+    button.btn-danger {
+      background: var(--danger);
+      color: #ffffff;
+    }
+
+    button.btn-danger:hover {
+      background: #b91c1c;
+    }
+
+    input[type="text"] {
+      padding: 9px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #f1f5f9;
+      color: var(--text-main);
+      font-family: monospace;
+      font-size: 0.95rem;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    input[type="text"]:focus {
+      outline: 2px solid var(--accent);
+      background: #ffffff;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>🛡️ ChargeShield-SOAR Monitor</h1>
+    <div id="ws-status" class="status-badge status-offline">● Disconnected</div>
+  </div>
+
+  <div class="grid">
+    <!-- Real-time Attack Type Banner & Status -->
+    <div id="attack-card" class="card">
+      <h2 id="attack-card-title">🚨 System Threat Monitor</h2>
+      <div id="attack-banner" class="attack-banner banner-normal">
+        🟢 NORMAL SYSTEM OPERATION
+      </div>
+      <div style="margin-top: 16px;">
+        <div class="metric-row"><span>Detected Attack Vector:</span><span id="detected-attack-name" class="metric-value">NONE</span></div>
+        <div class="metric-row"><span>Mitigation Action:</span><span id="detected-mitigation" class="metric-value">PASS-THROUGH</span></div>
+        <div class="metric-row"><span>Target Origin IP:</span><span id="target-ip" class="metric-value">--</span></div>
+      </div>
+    </div>
+
+    <!-- Real-time EVSE Telemetry -->
+    <div class="card">
+      <h2>⚡ Station Live Telemetry</h2>
+      <div class="metric-row"><span>Bus Voltage:</span><span id="m-voltage" class="metric-value">-- V</span></div>
+      <div class="metric-row"><span>Line Current:</span><span id="m-current" class="metric-value">-- A</span></div>
+      <div class="metric-row"><span>Active Power:</span><span id="m-power" class="metric-value">-- kW</span></div>
+      <div class="metric-row"><span>Temperature:</span><span id="m-temp" class="metric-value">-- °C</span></div>
+      <div class="metric-row"><span>CPU Utilization:</span><span id="m-cpu" class="metric-value">-- %</span></div>
+      <div class="metric-row"><span>Failed Auth Attempts:</span><span id="m-auth" class="metric-value">--</span></div>
+    </div>
+
+    <!-- Active Mitigation & Blocklist -->
+    <div class="card">
+      <h2>⛔ Active SOAR Blocklist</h2>
+      <ul id="blocklist-container" class="blocklist">
+        <li style="color: var(--text-muted);">No blocked IPs recorded.</li>
+      </ul>
+      <div style="margin-top: 16px;">
+        <button onclick="fetchBlockedIPs()">Refresh List</button>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card">
+      <h2>⚙️ Admin Control</h2>
+      <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px;">Manual override to unblock target IP:</p>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="unblock-ip-input" placeholder="10.233.163.253">
+        <button class="btn-danger" onclick="unblockIP()">Unblock</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const currentHostname = window.location.hostname || "127.0.0.1";
+    const BACKEND_HOST = `${currentHostname}:8000`; 
+    const statusBadge = document.getElementById("ws-status");
+
+    let isManuallyUnblocked = false;
+
+    function updateTelemetryUI(wrapperData) {
+      if (!wrapperData) return;
+
+      const data = wrapperData.telemetry || wrapperData;
+      const soarEvent = wrapperData.soar_event || wrapperData.threat_details || wrapperData.latest_incident || {};
+
+      // Update Telemetry Metrics safely
+      const vElem = document.getElementById("m-voltage");
+      const cElem = document.getElementById("m-current");
+      const pElem = document.getElementById("m-power");
+      const tElem = document.getElementById("m-temp");
+      const cpuElem = document.getElementById("m-cpu");
+      const authElem = document.getElementById("m-auth");
+
+      vElem.textContent = (data.bus_voltage_v !== undefined && !isNaN(data.bus_voltage_v) ? data.bus_voltage_v.toFixed(1) : "--") + " V";
+      cElem.textContent = (data.line_current_a !== undefined && !isNaN(data.line_current_a) ? data.line_current_a.toFixed(1) : "--") + " A";
+      pElem.textContent = (data.active_power_kw !== undefined && !isNaN(data.active_power_kw) ? data.active_power_kw.toFixed(2) : "--") + " kW";
+      tElem.textContent = (data.temperature_c !== undefined && !isNaN(data.temperature_c) ? data.temperature_c.toFixed(1) : "--") + " °C";
+      cpuElem.textContent = (data.cpu_utilization_pct !== undefined && !isNaN(data.cpu_utilization_pct) ? data.cpu_utilization_pct.toFixed(0) : "--") + " %";
+      authElem.textContent = data.failed_auth_attempts ?? "--";
+
+      // If manually unblocked, suppress threat display until fresh telemetry comes in
+      let attackType = isManuallyUnblocked ? "NONE" : (wrapperData.threat_type || soarEvent.threat_type || soarEvent.attack_type || data.threat_type || data.active_attack_type || data.attack_type || "NONE");
+      let mitigation = soarEvent.actions_taken || wrapperData.actions_taken || "PASS-THROUGH";
+      if (Array.isArray(mitigation)) mitigation = mitigation.join(", ");
+
+      if (!isManuallyUnblocked && (attackType === "NONE" || !attackType)) {
+        if (data.bus_voltage_v >= 400.0) attackType = "INJECTION";
+        else if (data.temperature_c >= 70.0) attackType = "ANOMALOUS_TELEMETRY";
+        else if (data.failed_auth_attempts >= 5) attackType = "BRUTE_FORCE";
+        else if (data.cpu_utilization_pct > 85) attackType = "DOS_FLOODING";
+      }
+
+      if (attackType !== "NONE" && attackType) {
+        if (mitigation === "PASS-THROUGH") {
+          mitigation = "AUTOMATED IP BLOCK / ISOLATE_NODE";
+        }
+      }
+
+      // Highlight alert thresholds (suppressed if manually unblocked)
+      if (!isManuallyUnblocked && data.cpu_utilization_pct > 85) cpuElem.classList.add("alert"); else cpuElem.classList.remove("alert");
+      if (!isManuallyUnblocked && data.bus_voltage_v >= 400.0) vElem.classList.add("alert"); else vElem.classList.remove("alert");
+      if (!isManuallyUnblocked && data.failed_auth_attempts >= 5) authElem.classList.add("alert"); else authElem.classList.remove("alert");
+      if (!isManuallyUnblocked && data.temperature_c >= 70.0) tElem.classList.add("alert"); else tElem.classList.remove("alert");
+
+      // Update Attack Card UI elements
+      const attackCard = document.getElementById("attack-card");
+      const attackCardTitle = document.getElementById("attack-card-title");
+      const attackBanner = document.getElementById("attack-banner");
+      const attackNameElem = document.getElementById("detected-attack-name");
+      const mitigationElem = document.getElementById("detected-mitigation");
+      const ipElem = document.getElementById("target-ip");
+
+      ipElem.textContent = wrapperData.source_ip || data.source_ip || data.client_ip || "10.233.163.253";
+
+      if (!isManuallyUnblocked && attackType !== "NONE" && attackType) {
+        attackCard.className = "card attack-active";
+        attackCardTitle.className = "attack-header";
+        attackBanner.className = "attack-banner banner-attack";
+        attackBanner.textContent = `⚠️ ATTACK DETECTED: ${attackType.replace(/_/g, ' ')}`;
+        attackNameElem.textContent = attackType;
+        attackNameElem.className = "metric-value alert";
+        mitigationElem.textContent = mitigation;
+        mitigationElem.className = "metric-value alert";
+      } else {
+        attackCard.className = "card";
+        attackCardTitle.className = "";
+        attackBanner.className = "attack-banner banner-normal";
+        attackBanner.textContent = "🟢 NORMAL SYSTEM OPERATION";
+        attackNameElem.textContent = "NONE (BASELINE)";
+        attackNameElem.className = "metric-value";
+        mitigationElem.textContent = "PASS-THROUGH";
+        mitigationElem.className = "metric-value";
+      }
+    }
+
+    // 1. WebSocket Live Stream Connection
+    let ws;
+    function connectWebSocket() {
+      ws = new WebSocket(`ws://${BACKEND_HOST}/ws/telemetry`);
+
+      ws.onopen = () => {
+        statusBadge.textContent = "● Live Stream Active";
+        statusBadge.className = "status-badge status-online";
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          updateTelemetryUI(data);
+        } catch (e) {
+          console.error("Error parsing telemetry frame:", e);
+        }
+      };
+
+      ws.onerror = () => {
+        statusBadge.textContent = "● Polling Mode (HTTP)";
+        statusBadge.className = "status-badge status-online";
+      };
+
+      ws.onclose = () => {
+        statusBadge.textContent = "● Disconnected (Reconnecting...)";
+        statusBadge.className = "status-badge status-offline";
+        setTimeout(connectWebSocket, 3000);
+      };
+    }
+
+    // 2. HTTP Polling Fallback
+    async function pollLatestTelemetry() {
+      try {
+        const res = await fetch(`http://${BACKEND_HOST}/api/v1/timeline`);
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          updateTelemetryUI({ telemetry: data[data.length - 1] });
+        }
+      } catch (err) {
+        // Silent catch during polling drops
+      }
+    }
+
+    // 3. Blocklist Management
+    async function fetchBlockedIPs() {
+      try {
+        const res = await fetch(`http://${BACKEND_HOST}/api/v1/admin/blocked-ips`);
+        const data = await res.json();
+        const container = document.getElementById("blocklist-container");
+        container.innerHTML = "";
+
+        if (data.blocked_ips && data.blocked_ips.length > 0) {
+          data.blocked_ips.forEach(ip => {
+            const li = document.createElement("li");
+            li.className = "block-item";
+            li.innerHTML = `<span>🚨 ${ip}</span> <button class="btn-danger" onclick="unblockIP('${ip}')">Unblock</button>`;
+            container.appendChild(li);
+          });
+        } else {
+          container.innerHTML = `<li style="color: var(--text-muted);">No blocked IPs recorded.</li>`;
+          if (isManuallyUnblocked) {
+            isManuallyUnblocked = false;
+          }
+        }
+      } catch (err) {
+        // Silent catch
+      }
+    }
+
+    async function unblockIP(targetIp) {
+      const ip = targetIp || document.getElementById("unblock-ip-input").value;
+      if (!ip) {
+        alert("Please enter an IP address to unblock.");
+        return;
+      }
+      try {
+        const res = await fetch(`http://${BACKEND_HOST}/api/v1/admin/unblock?ip=${ip}`, {
+          method: "POST"
+        });
+        const result = await res.json();
+
+        // Lock UI into normal state immediately
+        isManuallyUnblocked = true;
+
+        // Clear active alert classes
+        document.querySelectorAll('.metric-value.alert').forEach(el => el.classList.remove('alert'));
+
+        // Reset Attack Monitor card visuals back to normal
+        const attackCard = document.getElementById("attack-card");
+        const attackCardTitle = document.getElementById("attack-card-title");
+        const attackBanner = document.getElementById("attack-banner");
+        const attackNameElem = document.getElementById("detected-attack-name");
+        const mitigationElem = document.getElementById("detected-mitigation");
+
+        attackCard.className = "card";
+        attackCardTitle.className = "";
+        attackBanner.className = "attack-banner banner-normal";
+        attackBanner.textContent = "🟢 NORMAL SYSTEM OPERATION";
+        attackNameElem.textContent = "NONE (BASELINE)";
+        attackNameElem.className = "metric-value";
+        mitigationElem.textContent = "PASS-THROUGH";
+        mitigationElem.className = "metric-value";
+
+        fetchBlockedIPs();
+      } catch (err) {
+        alert("Failed to execute unblock request.");
+      }
+    }
+
+    // Initialize Dashboard Loops
+    connectWebSocket();
+    setInterval(pollLatestTelemetry, 2000);
+    setInterval(fetchBlockedIPs, 3000);
+  </script>
+</body>
+</html>
